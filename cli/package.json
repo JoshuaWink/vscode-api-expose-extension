@@ -1,0 +1,29 @@
+{
+  "name": "vscode-api-cli",
+  "version": "1.0.1",
+  "description": "The One CLI to Rule Them All - Universal VSCode API access",
+  "main": "dist/cli.js",
+  "bin": {
+    "code-api": "./dist/cli.js",
+    "capi": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "install-global": "npm run build && npm link",
+    "uninstall-global": "npm unlink"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "commander": "^11.0.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["vscode", "api", "cli", "automation", "scripting"],
+  "author": "VSCode API Exposure",
+  "license": "MIT"
+}

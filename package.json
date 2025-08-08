@@ -1,0 +1,94 @@
+{
+  "name": "vscode-api-expose",
+  "displayName": "VSCode API Complete Exposure",
+  "description": "The One CLI to Rule Them All - Complete VSCode API exposure with no restrictions",
+  "version": "0.0.4-a",
+  "engines": {
+    "vscode": "^1.102.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-api-expose.startServer",
+        "title": "Start API Exposure Server"
+      },
+      {
+        "command": "vscode-api-expose.stopServer",
+        "title": "Stop API Exposure Server"
+      },
+      {
+        "command": "vscode-api-expose.listAPIs",
+        "title": "List All Available APIs"
+      },
+      {
+        "command": "vscode-api-expose.getSessionInfo",
+        "title": "Get Session Information"
+      },
+      {
+        "command": "vscode-api-expose.showMeshStatus",
+        "title": "Show Mesh Network Status"
+      },
+      {
+        "command": "vscode-api-expose.toggleServer",
+        "title": "Toggle API Exposure Server"
+      }
+    ],
+    "configuration": {
+      "title": "VSCode API Exposure",
+      "properties": {
+        "vscode-api-expose.serverPort": {
+          "type": "number",
+          "default": 3637,
+          "description": "Port for the API exposure HTTP server"
+        },
+        "vscode-api-expose.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start the API exposure server on activation"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.102.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.8",
+    "eslint": "^9.32.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/uuid": "^10.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "uuid": "^11.1.0"
+  }
+}
