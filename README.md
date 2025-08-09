@@ -1,226 +1,89 @@
-# VSCode API Complete Exposure
+Dedicated to my God and Father for leading me through this project, to my Wife for her support and patience, and to you--the devs--who will do great things with this tool. I hope this tool serves you well in your VSCode adventures!
 
-**"The One CLI to Rule Them All"** - Complete VSCode API exposure with no restrictions, enabling unlimited automation and scripting of any VSCode functionality across multiple sessions.
+# capi: The Minimal VSCode Kernel CLI
 
-## 🎯 Philosophy
 
-If it exists in VSCode's API, it should be accessible via CLI. No gatekeeping, no limitations, just pure API exposure with dynamic JavaScript execution.
+## Keywords
 
-## 🏗️ Architecture
-
-### Extension Bridge (`src/extension.ts`)
-- **Auto-discovers** ALL available VSCode APIs
-- **HTTP Server** on port 3637 (configurable) for CLI communication  
-- **Mesh Networking** - automatically discovers other VSCode instances (ports 3637-3646)
-- **Dynamic JavaScript Execution** - JIT compilation for unlimited flexibility
-- **Session Management** - unique IDs with workspace tracking
-
-### Universal CLI (`cli/vscode-api`)
-- **Human-friendly** interface over HTTP API
-- **Session targeting** by ID or workspace
-- **Batch execution** and scripting support
-- **Auto-discovery** of running VSCode instances
-
-## 🚀 Quick Start
-
-### 1. Install Extension Package
-
-```bash
-# Option A: Install from VSIX (recommended)
-./install.sh
-
-# Option B: Manual installation
-code --install-extension vscode-api-expose-0.0.2.vsix --force
-
-# Option C: Development mode (for testing)
-# Press F5 in VSCode to run extension in new window
-```
-
-### 2. Check Status Bar
-
-Look for the status indicator in VSCode's bottom status bar:
-- **🟢 VSCode API (3637)** = Server running on port 3637
-- **🔴 VSCode API** = Server stopped
-
-Click the status bar item to toggle the server on/off.
-
-### 3. Build & Test CLI
-
-```bash
-# Build CLI
-cd cli && npm run build
-
-# Test CLI (should show "no sessions" if extension not running)
-node dist/cli.js sessions
-
-# Install globally (optional)
-npm run install-global
-
-# Quick demo
-./test-demo.sh
-```
-
-### 3. Use the CLI
-
-```bash
-# List all VSCode sessions
-vscode-api sessions
-
-# List all available APIs  
-vscode-api apis
-
-# Execute VSCode commands
-vscode-api command "workbench.action.files.openFile" "/path/to/file"
-vscode-api command "workbench.action.closeActiveEditor"
-
-# Dynamic JavaScript execution (JIT Power!)
-vscode-api exec "vscode.window.showInformationMessage('Hello from CLI!')"
-vscode-api exec "vscode.window.activeTextEditor?.edit(edit => edit.insert(new vscode.Position(0,0), 'Inserted!'))"
-
-# Target specific sessions
-vscode-api --workspace="/my/project" command "workbench.action.files.save"
-vscode-api --session="abc123..." exec "vscode.workspace.saveAll()"
-
-# Batch execution
-echo -e "exec \"vscode.window.showInformationMessage('Message 1')\"\\nexec \"vscode.window.showInformationMessage('Message 2')\"" > commands.txt
-vscode-api batch commands.txt
-
-# Show messages in VSCode
-vscode-api message "Hello World!"
-vscode-api message --type error "Something went wrong!"
-```
-
-## 🌐 Mesh Network Features
-
-The extension automatically discovers other VSCode instances and forms a mesh network:
-
-```bash
-# View mesh network status
-# Command Palette: "Show Mesh Network Status"
-
-# Broadcast commands to all sessions
-curl -X POST http://localhost:3637/mesh/broadcast/exec \\
-  -H "Content-Type: application/json" \\
-  -d '{"code": "vscode.window.showInformationMessage(\\"Broadcast!\\")"}'
-```
-
-## 📡 HTTP API Endpoints
-
-Direct HTTP access for programmatic integration:
-
-```bash
-# Session info
-curl http://localhost:3637/session
-
-# List APIs
-curl http://localhost:3637/apis
-
-# Execute command
-curl -X POST http://localhost:3637/command/workbench.action.files.openFile \\
-  -H "Content-Type: application/json" \\
-  -d '{"args": ["/path/to/file"]}'
-
-# Dynamic JavaScript execution
-curl -X POST http://localhost:3637/exec \\
-  -H "Content-Type: text/plain" \\
-  -d 'vscode.window.showInformationMessage("Direct HTTP!")'
-
-# Mesh network peers
-curl http://localhost:3637/mesh/peers
-```
-
-## 🎮 Available Commands
-
-### Extension Commands (in VSCode)
-- **Start API Exposure Server** - Manual server start
-- **Stop API Exposure Server** - Manual server stop  
-- **List All Available APIs** - View discovered APIs
-- **Get Session Information** - View session details
-- **Show Mesh Network Status** - View connected peers
-
-### CLI Commands
-```bash
-vscode-api sessions              # List VSCode sessions
-vscode-api apis                  # List all APIs
-vscode-api command <cmd> [args]  # Execute VSCode command
-vscode-api exec <code>           # Execute JavaScript
-vscode-api message <text>        # Show message in VSCode
-vscode-api batch <file>          # Execute batch commands
-```
-
-## ⚙️ Configuration
-
-Extension settings in VSCode:
-
-```json
-{
-  "vscode-api-expose.serverPort": 3637,
-  "vscode-api-expose.autoStart": true
-}
-```
-
-## 🔧 Development
-
-### Project Structure
-```
-/src/extension.ts          # Main extension with API exposure
-/cli/src/cli.ts           # CLI tool implementation  
-/package.json             # Extension manifest
-/cli/package.json         # CLI package
-```
-
-### Build Commands
-```bash
-npm run compile           # Build extension
-npm run watch            # Watch mode for extension
-cd cli && npm run build  # Build CLI
-cd cli && npm run dev    # Watch mode for CLI
-```
-
-### Testing
-```bash
-./test-setup.sh          # Run complete test setup
-```
-
-## 🌟 Key Features
-
-- ✅ **Complete API Surface** - Auto-discovers ALL VSCode APIs
-- ✅ **Dynamic JavaScript Execution** - JIT compilation advantage  
-- ✅ **Mesh Networking** - Multi-session coordination
-- ✅ **Session Targeting** - Route commands to specific VSCode instances
-- ✅ **CLI & HTTP Access** - Human and machine interfaces with clean output
-- ✅ **Status Bar Integration** - 🟢/🔴 visual indicators with click-to-toggle
-- ✅ **No Restrictions** - If VSCode can do it, CLI can script it
-- ✅ **Batch Processing** - Automate complex workflows
-- ✅ **Real-time Discovery** - Auto-find running VSCode sessions
-- ✅ **Easy Installation** - One-click VSIX package
-- ✅ **Clean Interface** - Professional output without verbose messages
-
-## 🚨 Security Note
-
-This extension exposes the complete VSCode API surface. Only run in trusted environments. The HTTP server binds to localhost only.
-
-## 📝 Examples
-
-### Automation Script
-```bash
-#!/bin/bash
-# Auto-save all files in all VSCode sessions
-vscode-api sessions --json | jq -r '.[].id' | while read session; do
-  vscode-api --session="$session" exec "vscode.workspace.saveAll()"
-done
-```
-
-### Productivity Workflow  
-```bash
-# Open project, show message, and focus editor
-vscode-api command "workbench.action.files.openFolder" "/path/to/project"
-vscode-api exec "vscode.window.showInformationMessage('Project loaded!')"
-vscode-api command "workbench.action.focusActiveEditorGroup"
-```
+- vscode api
+- api exposure
+- scripting
+- automation
+- session targeting
+- extension
+- mcp server
+- copilot integration
+- agent integration
+- rapid prototyping
+- developer tools
+- code automation
+- external control
+- creativity
 
 ---
 
-**Status**: CLI Complete ✅  
-**Architecture**: Extension Bridge + Universal CLI + Mesh Network  
-**Philosophy**: "One CLI to Rule Them All" - Zero restrictions on VSCode API access
+## Philosophy
+
+capi is a minimal, scriptable kernel for VSCode automation. It exposes all VSCode APIs, commands, and session controls as raw, composable primitives—nothing more. There are no enforced workflows, no opinions, and no abstractions. The community and users define higher-level patterns, plugins, and conventions.
+
+
+## What is capi?
+
+capi (short for Code-API) is a VSCode extension and CLI that exposes the full VSCode API for external scripting and automation. It can target specific sessions, making it possible to control and automate any VSCode window from the outside. capi is designed for developers, agents, and anyone who wants to take VSCode to the next level—rapid prototyping, agent integration, and creative automation are all possible. The only limit is your creativity.
+
+capi is also the foundation for the MCP (Model Context Protocol) server and tools, which use the official `vscodeAPI` as their reference. This means:
+- Microsoft maintains the API surface and docs (via Copilot and `vscodeAPI`)
+- MCP lets any agent, code assistant, or tool connect to VSCode, see everything Copilot can, and more
+- The intent is to supercharge Copilot and allow any assistant to interact with VSCode via its APIs and code at runtime
+
+---
+
+## Key Principles
+
+- **Expose Everything, Constrain Nothing:** All VSCode APIs, commands, and session controls are available as primitives.
+- **No Forced Flows:** capi does not enforce any workflow or opinionated UX. Users compose and automate as they wish.
+- **Transparent Output:** All results are output in a composable format (JSON by default).
+- **Community-Driven Abstraction:** Higher-level patterns, plugins, and recipes are defined by users and the community—not by capi.
+- **Official Discovery:** All API discovery, documentation, and evolution are handled by the official `vscodeAPI` (maintained by Microsoft and surfaced in GitHub Copilot).
+
+## Core Commands
+
+| Command                | Description                                      | Example Usage                                      |
+|------------------------|--------------------------------------------------|----------------------------------------------------|
+| `capi sessions`        | List all active VSCode sessions                  | `capi sessions`                                    |
+| `capi apis`            | List all available VSCode APIs                   | `capi apis`                                        |
+| `capi exec <js>`       | Execute arbitrary JS in VSCode extension host    | `capi exec "vscode.commands.executeCommand('...')"` |
+| `capi command <id>`    | Run a VSCode command by ID                       | `capi command editor.action.selectAll`             |
+| `capi message <text>`  | Show a message in VSCode                         | `capi message "Hello"`                             |
+| `capi batch <file>`    | Run a batch of commands from a file              | `capi batch script.txt`                            |
+| `capi --session <id>`  | Target a specific session for any command        | `capi apis --session <id>`                         |
+| `capi --json`          | Output all results as JSON                       | `capi apis --json`                                 |
+
+## Intent
+
+- **capi is not a framework.** It is a kernel: a foundation for automation, scripting, and control.
+- **Discovery and documentation** are delegated to the official `vscodeAPI` (GitHub Copilot, Microsoft-maintained).
+- **Users are empowered** to build, share, and evolve their own workflows, plugins, and recipes.
+
+## Example
+
+```sh
+# List all sessions
+capi sessions
+
+# List all APIs for a session
+capi apis --session <session-id>
+
+# Execute a VSCode command
+capi exec "vscode.commands.executeCommand('editor.action.selectAll')" --session <session-id>
+```
+
+## Contributing
+
+- Share your scripts, plugins, and recipes with the community.
+- Use the official `vscodeAPI` for discovery and documentation.
+- Help keep capi minimal, composable, and unconstrained.
+
+---
+
+*Let the community define the "how." capi just provides the "can."*

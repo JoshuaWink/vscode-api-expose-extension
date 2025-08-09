@@ -1,9 +1,10 @@
+// Import version from package.json for status bar tooltip
+import pkg from '../package.json';
 import * as vscode from 'vscode';
 import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import * as http from 'http';
-
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -66,9 +67,22 @@ class VSCodeAPIExposure {
     private readonly registryDir: string;
     private readonly registryFile: string;
 
+    // Track dynamic endpoints for removal
+    private dynamicEndpoints: Map<string, import('express').RequestHandler> = new Map();
+
     constructor(private context: vscode.ExtensionContext) {
         this.app = express();
-        this.sessionInfo = this.generateSessionInfo();
+        // sessionInfo will be set in startServer()
+        this.sessionInfo = {
+            id: '',
+            pid: 0,
+            workspaceUri: undefined,
+            windowId: 0,
+            capabilities: [],
+            lastSeen: new Date(),
+            serverPort: 0,
+            meshPeers: []
+        };
 
         // Determine roaming/user data directory for registry
         const userDataDir = this.getUserDataDir();
@@ -89,6 +103,12 @@ class VSCodeAPIExposure {
             let changed = false;
             for (const [id, info] of Object.entries(registry)) {
                 if (now - new Date(info.lastSeen).getTime() > 90 * 1000) { // 120 seconds
+                    // Remove all dynamic endpoints if this is our session
+                    if (id === this.sessionInfo.id) {
+                        for (const path of Array.from(this.dynamicEndpoints.keys())) {
+                            this.removeDynamicEndpoint(path);
+                        }
+                    }
                     delete registry[id];
                     changed = true;
                 }
@@ -149,6 +169,10 @@ class VSCodeAPIExposure {
     }
 
     private deregisterSession(): void {
+        // Remove all dynamic endpoints for this session
+        for (const path of Array.from(this.dynamicEndpoints.keys())) {
+            this.removeDynamicEndpoint(path);
+        }
         const registry = this.readRegistry();
         delete registry[this.sessionInfo.id];
         this.writeRegistry(registry);
@@ -170,41 +194,40 @@ class VSCodeAPIExposure {
         return Object.values(fresh);
     }
 
-    private generateSessionInfo(): SessionInfo {
-        // Always pick the first available port in the allowed range
-        const usedPorts = new Set<number>();
-        try {
-            const registry = this.readRegistry();
-            for (const info of Object.values(registry)) {
-                usedPorts.add(info.serverPort);
-            }
-        } catch {}
-
-        let port: number | undefined = undefined;
+    // Atomically find an available port by binding, only claim after successful bind
+    private async findAvailablePortAndBind(): Promise<number> {
         for (let p = this.portRange.min; p <= this.portRange.max; p++) {
-            if (!usedPorts.has(p)) {
-                port = p;
-                break;
+            try {
+                await new Promise<void>((resolve, reject) => {
+                    const testServer = http.createServer();
+                    testServer.once('error', (err: any) => {
+                        testServer.close();
+                        reject(err);
+                    });
+                    testServer.listen(p, () => {
+                        testServer.close(() => resolve());
+                    });
+                });
+                return p;
+            } catch (e) {
+                // Port is in use, try next
             }
         }
+        throw new Error('No available ports in the allowed range.');
+    }
 
-        if (port === undefined) {
-            throw new Error('No available ports in the allowed range.');
-        }
-
-        console.log('[VSCodeAPIExposure] generateSessionInfo:');
-        console.log('  Used ports from registry:', Array.from(usedPorts));
-        console.log('  Final selected port:', port);
-
+    // Generate session info after atomic port allocation
+    private async generateSessionInfoAtomic(): Promise<SessionInfo> {
+        const port = await this.findAvailablePortAndBind();
         return {
             id: uuidv4(),
             pid: process.pid,
             workspaceUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString(),
-            windowId: Math.floor(Math.random() * 1000000), // Simple window ID
+            windowId: Math.floor(Math.random() * 1000000),
             capabilities: [],
             lastSeen: new Date(),
             serverPort: port,
-            meshPeers: [] // Initialize empty peer list
+            meshPeers: []
         };
     }
 
@@ -217,6 +240,38 @@ class VSCodeAPIExposure {
         this.app.get('/session', (req, res) => {
             this.sessionInfo.lastSeen = new Date();
             res.json(this.sessionInfo);
+        });
+
+        // Dynamic endpoint registration
+        this.app.post('/add-endpoint', (req, res) => {
+            const { path, response } = req.body;
+            if (!path || typeof path !== 'string' || !path.startsWith('/')) {
+                return res.status(400).json({ success: false, error: 'Invalid path. Must start with /.' });
+            }
+            // Remove if already exists
+            if (this.dynamicEndpoints.has(path)) {
+                this.removeDynamicEndpoint(path);
+            }
+            // Register a new GET endpoint at runtime
+            const handler = (req2: express.Request, res2: express.Response) => {
+                res2.json({ success: true, dynamic: true, path, response });
+            };
+            (this.app as any).get(path, handler);
+            this.dynamicEndpoints.set(path, handler);
+            res.json({ success: true, message: `Endpoint ${path} registered.` });
+        });
+
+        // Dynamic endpoint removal
+        this.app.post('/remove-endpoint', (req, res) => {
+            const { path } = req.body;
+            if (!path || typeof path !== 'string' || !path.startsWith('/')) {
+                return res.status(400).json({ success: false, error: 'Invalid path. Must start with /.' });
+            }
+            if (!this.dynamicEndpoints.has(path)) {
+                return res.status(404).json({ success: false, error: 'Endpoint not found.' });
+            }
+            this.removeDynamicEndpoint(path);
+            res.json({ success: true, message: `Endpoint ${path} removed.` });
         });
 
         // List all discovered APIs
@@ -401,20 +456,13 @@ class VSCodeAPIExposure {
         const isRunning = this.server !== null;
         const peerCount = this.meshPeers.size;
         const apiCount = this.discoveredAPIs.size;
-        
+        const version = pkg.version || 'unknown';
         if (isRunning) {
             this.statusBarItem.text = `🟢 VSCode API (${this.sessionInfo.serverPort})`;
-            this.statusBarItem.tooltip = `VSCode API Exposure Server
-• Status: Running on port ${this.sessionInfo.serverPort}
-• Session ID: ${this.sessionInfo.id.substring(0, 8)}...
-• Mesh Peers: ${peerCount} connected
-• APIs Exposed: ${apiCount}
-• Click to stop server`;
+            this.statusBarItem.tooltip = `VSCode API Exposure Server v${version}\n• Status: Running on port ${this.sessionInfo.serverPort}\n• Session ID: ${this.sessionInfo.id.substring(0, 8)}...\n• Mesh Peers: ${peerCount} connected\n• APIs Exposed: ${apiCount}\n• Click to stop server`;
         } else {
             this.statusBarItem.text = `🔴 VSCode API`;
-            this.statusBarItem.tooltip = `VSCode API Exposure Server
-• Status: Stopped
-• Click to start server`;
+            this.statusBarItem.tooltip = `VSCode API Exposure Server v${version}\n• Status: Stopped\n• Click to start server`;
         }
     }
 
@@ -422,6 +470,9 @@ class VSCodeAPIExposure {
         if (this.server) {
             return;
         }
+
+        // Atomically allocate port and generate session info
+        this.sessionInfo = await this.generateSessionInfoAtomic();
 
         return new Promise((resolve, reject) => {
             this.server = this.app.listen(this.sessionInfo.serverPort, () => {
@@ -595,6 +646,53 @@ class VSCodeAPIExposure {
             const urlParts = new URL(url);
             const postData = JSON.stringify(data);
             
+
+        // Generic exec-with-action endpoint: run code, then run follow-up action with result
+        this.app.post('/exec-with-action', async (req, res) => {
+            try {
+                const code = typeof req.body === 'string' ? req.body : req.body.code;
+                const onResult = req.body.onResult;
+                // Create a safe execution context with vscode API
+                const context = {
+                    vscode,
+                    console,
+                    setTimeout,
+                    setInterval,
+                    clearTimeout,
+                    clearInterval,
+                    Promise
+                };
+                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                const func = new AsyncFunction('vscode', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Promise', code);
+                const result = await func(
+                    context.vscode,
+                    context.console,
+                    context.setTimeout,
+                    context.setInterval,
+                    context.clearTimeout,
+                    context.clearInterval,
+                    context.Promise
+                );
+                let actionResult = null;
+                if (onResult) {
+                    // onResult is a JS function body as string, receives 'result' as argument
+                    const actionFunc = new AsyncFunction('result', 'vscode', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Promise', onResult);
+                    actionResult = await actionFunc(
+                        result,
+                        context.vscode,
+                        context.console,
+                        context.setTimeout,
+                        context.setInterval,
+                        context.clearTimeout,
+                        context.clearInterval,
+                        context.Promise
+                    );
+                }
+                res.json({ success: true, result, actionResult });
+            } catch (error) {
+                res.status(500).json({ success: false, error: (error as Error).message });
+            }
+        });
             const options = {
                 hostname: urlParts.hostname,
                 port: urlParts.port,
@@ -637,6 +735,19 @@ class VSCodeAPIExposure {
         
         this.meshPeers.clear();
         this.sessionInfo.meshPeers = [];
+    }
+
+    // Remove a dynamic endpoint from Express
+    private removeDynamicEndpoint(path: string) {
+        // Remove from Express router stack
+        const stack = (this.app as any)._router.stack;
+        for (let i = stack.length - 1; i >= 0; i--) {
+            const route = stack[i];
+            if (route.route && route.route.path === path) {
+                stack.splice(i, 1);
+            }
+        }
+        this.dynamicEndpoints.delete(path);
     }
 }
 

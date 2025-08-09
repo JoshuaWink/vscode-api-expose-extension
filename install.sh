@@ -6,9 +6,9 @@
 echo "🚀 Installing VSCode API Complete Exposure..."
 
 # Install the extension
-if [ -f "vscode-api-expose-0.0.2.vsix" ]; then
+if [ -f "vscode-api-expose-0.0.6.vsix" ]; then
     echo "📦 Installing extension from VSIX..."
-    code --install-extension vscode-api-expose-0.0.2.vsix --force
+    code --install-extension vscode-api-expose-0.0.6.vsix --force
     
     if [ $? -eq 0 ]; then
         echo "✅ Extension installed successfully!"

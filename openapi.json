@@ -1,0 +1,157 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "VSCode API Complete Exposure",
+    "version": "0.0.4-b",
+    "description": "OpenAPI schema for the VSCode API Complete Exposure extension."
+  },
+  "servers": [
+    { "url": "http://localhost:3637" }
+  ],
+  "paths": {
+    "/session": {
+      "get": {
+        "summary": "Get current session info",
+        "responses": {
+          "200": { "description": "Session info" }
+        }
+      }
+    },
+    "/apis": {
+      "get": {
+        "summary": "List all discovered APIs",
+        "responses": {
+          "200": { "description": "List of APIs" }
+        }
+      }
+    },
+    "/command/{commandId}": {
+      "post": {
+        "summary": "Execute a VSCode command",
+        "parameters": [
+          { "name": "commandId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "args": { "type": "array", "items": {} } } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Command result" }
+        }
+      }
+    },
+    "/exec": {
+      "post": {
+        "summary": "Execute arbitrary JavaScript in VSCode context",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "code": { "type": "string" } } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Execution result" }
+        }
+      }
+    },
+    "/workspace/folders": {
+      "get": {
+        "summary": "List workspace folders",
+        "responses": {
+          "200": { "description": "Workspace folders" }
+        }
+      }
+    },
+    "/editor/active": {
+      "get": {
+        "summary": "Get info about the active editor",
+        "responses": {
+          "200": { "description": "Active editor info" }
+        }
+      }
+    },
+    "/window/showMessage": {
+      "post": {
+        "summary": "Show a message in VSCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "message": { "type": "string" }, "type": { "type": "string" } } }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message result" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": { "description": "Health status" }
+        }
+      }
+    },
+    "/mesh/peers": {
+      "get": {
+        "summary": "List mesh peers",
+        "responses": {
+          "200": { "description": "Mesh peers" }
+        }
+      }
+    },
+    "/mesh/broadcast/{endpoint}": {
+      "post": {
+        "summary": "Broadcast to mesh peers",
+        "parameters": [
+          { "name": "endpoint", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Broadcast result" }
+        }
+      }
+    },
+    "/add-endpoint": {
+      "post": {
+        "summary": "Register a new dynamic GET endpoint at runtime",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "path": { "type": "string" }, "response": { "type": "object" } }, "required": ["path", "response"] }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Endpoint registered" }
+        }
+      }
+    },
+    "/remove-endpoint": {
+      "post": {
+        "summary": "Remove a previously registered dynamic endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "path": { "type": "string" } }, "required": ["path"] }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Endpoint removed" }
+        }
+      }
+    }
+  }
+}

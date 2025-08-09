@@ -188,11 +188,8 @@ program
                 workspace: opts.workspace
             });
             
-            if (opts.json) {
-                console.log(JSON.stringify(result, null, 2));
-            } else {
-                console.log(result.result !== undefined ? result.result : 'No return value');
-            }
+            // Always print the full JSON response (pretty-printed)
+            console.log(JSON.stringify(result, null, 2));
         } catch (error: any) {
             console.error(chalk.red(`Error: ${error.message}`));
             process.exit(1);
