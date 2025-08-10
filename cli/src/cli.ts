@@ -23,6 +23,19 @@ interface VSCodeSession {
 }
 
 class VSCodeAPIClient {
+    async executeWithAction(code: string, onResult: string, target?: { sessionId?: string, workspace?: string }): Promise<any> {
+        const session = await this.getTargetSession(target?.sessionId, target?.workspace);
+        try {
+            const response = await axios.post(
+                `${session.baseUrl}/exec-with-action`,
+                { code, onResult },
+                { headers: { 'Content-Type': 'application/json' } }
+            );
+            return response.data;
+        } catch (error: any) {
+            throw new Error(`exec-with-action failed: ${error.response?.data?.error || error.message}`);
+        }
+    }
     private sessions: VSCodeSession[] = [];
     private defaultPorts = [3637, 3638, 3639, 3640, 3641]; // Default port range
 
@@ -212,6 +225,29 @@ program
                 console.log(JSON.stringify(result, null, 2));
             } else {
                 console.log(result.result !== undefined ? result.result : 'No return value');
+            }
+        } catch (error: any) {
+            console.error(chalk.red(`Error: ${error.message}`));
+            process.exit(1);
+        }
+    });
+
+// Execute JavaScript code with a follow-up action
+program
+    .command('exec-with-action <code> <onResult>')
+    .description('Execute JavaScript code in VSCode, then run a follow-up action with the result')
+    .action(async (code: string, onResult: string) => {
+        try {
+            const opts = program.opts();
+            const result = await client.executeWithAction(code, onResult, {
+                sessionId: opts.session,
+                workspace: opts.workspace
+            });
+            if (opts.json) {
+                console.log(JSON.stringify(result, null, 2));
+            } else {
+                console.log('Result:', result.result !== undefined ? result.result : 'No return value');
+                console.log('Action Result:', result.actionResult !== undefined ? result.actionResult : 'No action result');
             }
         } catch (error: any) {
             console.error(chalk.red(`Error: ${error.message}`));

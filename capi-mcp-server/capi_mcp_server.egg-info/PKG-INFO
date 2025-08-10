@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: capi-mcp-server
+Version: 0.1.0
+Summary: MCP server exposing the capi CLI for VSCode automation.
+Author: Joshua Wink
+Requires-Python: >=3.8
+Requires-Dist: mcp[cli]

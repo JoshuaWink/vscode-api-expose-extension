@@ -1,0 +1,17 @@
+[project]
+name = "capi-mcp-server"
+version = "0.1.0"
+description = "MCP server exposing the capi CLI for VSCode automation."
+authors = [
+    { name = "Joshua Wink" }
+]
+requires-python = ">=3.8"
+
+dependencies = [
+    "mcp[cli]"
+]
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
