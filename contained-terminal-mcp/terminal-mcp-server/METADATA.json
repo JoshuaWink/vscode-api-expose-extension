@@ -1,0 +1,8 @@
+{
+  "name": "terminal-mcp-server",
+  "description": "A small FastMCP server exposing terminal (PTY) management tools for MCP clients.",
+  "keywords": ["mcp","fastmcp","terminal","pty","shell","remote-shell"],
+  "author": "JoshuaWink",
+  "license": "MIT",
+  "homepage": "https://github.com/JoshuaWink/terminal-mcp-server"
+}
