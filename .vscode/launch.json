@@ -16,6 +16,28 @@
 				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Launch debug_target.js",
+			"program": "${workspaceFolder}/scripts/debug_target.js",
+			"cwd": "${workspaceFolder}",
+			"env": {
+				"DEBUG_TARGET_N": "30"
+			},
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"],
+			"internalConsoleOptions": "neverOpen"
+		},
+		{
+			"type": "node",
+			"request": "attach",
+			"name": "Attach to debug_target (inspect)",
+			"port": 9229,
+			"restart": false,
+			"localRoot": "${workspaceFolder}",
+			"remoteRoot": "${workspaceFolder}"
 		}
 	]
 }

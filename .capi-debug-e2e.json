@@ -1,0 +1,129 @@
+{
+  "method": "direct-vscode.debug",
+  "targetFile": "/Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+  "lineOneBased": 11,
+  "before": [
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    },
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    },
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    },
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    }
+  ],
+  "after": [
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    },
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    },
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    },
+    {
+      "ctor": "Oo",
+      "type": "source",
+      "enabled": true,
+      "condition": null,
+      "hitCondition": null,
+      "logMessage": null,
+      "location": {
+        "uri": "file:///Users/joshuawink/Documents/github/vscode-api-expose/src/extension.ts",
+        "startLine": 10,
+        "startCharacter": 0,
+        "endLine": 10,
+        "endCharacter": 0
+      }
+    }
+  ]
+}
