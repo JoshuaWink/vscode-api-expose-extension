@@ -2,7 +2,7 @@
   "name": "vscode-api-expose",
   "displayName": "VSCode API Complete Exposure",
   "description": "The One CLI to Rule Them All - Complete VSCode API exposure with no restrictions",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "engines": {
     "vscode": "^1.102.0"
   },
@@ -63,6 +63,8 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
+  "vsce:package": "vsce package",
+  "vsce:publish": "vsce publish",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -95,4 +97,6 @@
     "type": "git",
     "url": "https://github.com/JoshuaWink/vscode-api-expose-extension.git"
   }
+  ,
+  "license": "Apache-2.0"
 }

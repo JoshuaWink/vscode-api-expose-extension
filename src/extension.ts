@@ -114,6 +114,10 @@ class VSCodeAPIExposure {
                 }
             }
             if (changed) {
+                // Persist the registry after cleaning stale sessions.
+                // Note: registry writes are intentionally simple JSON writes.
+                // If this code is used in production, consider atomic file writes
+                // and file locks to avoid races between multiple VS Code processes.
                 this.writeRegistry(registry);
             }
         }, 60000); // Run every minute
@@ -243,6 +247,11 @@ class VSCodeAPIExposure {
         });
 
         // Dynamic endpoint registration
+        // POST /add-endpoint
+        // Body: { path: string, response: any }
+        // Returns: { success: true, message }
+        // Notes: Registers a simple GET handler that returns the provided `response` for quick prototyping.
+        // Security: Anyone who can access the port can register endpoints; in production require an allowlist or token.
         this.app.post('/add-endpoint', (req, res) => {
             const { path, response } = req.body;
             if (!path || typeof path !== 'string' || !path.startsWith('/')) {
@@ -252,7 +261,7 @@ class VSCodeAPIExposure {
             if (this.dynamicEndpoints.has(path)) {
                 this.removeDynamicEndpoint(path);
             }
-            // Register a new GET endpoint at runtime
+            // Register a new GET endpoint at runtime that returns a static JSON payload.
             const handler = (req2: express.Request, res2: express.Response) => {
                 res2.json({ success: true, dynamic: true, path, response });
             };
@@ -281,6 +290,11 @@ class VSCodeAPIExposure {
         });
 
         // Execute VSCode command
+        // POST /command/:commandId
+        // Body: { args?: any[] }
+        // Returns: { success: true, result }
+        // Notes: This proxies directly to `vscode.commands.executeCommand` and is useful for invoking built-in commands from remote callers.
+        // Security: validate commandId against an allowlist in production.
         this.app.post('/command/:commandId', async (req, res) => {
             try {
                 const { commandId } = req.params;
@@ -293,11 +307,20 @@ class VSCodeAPIExposure {
         });
 
         // Dynamic JavaScript execution - THE JIT POWER!
+        // POST /exec
+        // Body: { code: string } OR raw string body
+        // Returns: { success: true, result }
+        // WARNING: This endpoint evaluates arbitrary JavaScript inside the extension host. It's extremely powerful and dangerous.
+        // - Do NOT expose this port publicly.
+        // - Add authentication or an allowlist before enabling in shared environments.
+        // - Consider sandboxing and strict input validation.
         this.app.post('/exec', async (req, res) => {
             try {
                 const code = typeof req.body === 'string' ? req.body : req.body.code;
                 
-                // Create a safe execution context with vscode API
+                // Create a controlled execution context exposing only safe globals and the vscode API.
+                const cp = require('child_process');
+                const os = require('os');
                 const context = {
                     vscode,
                     console,
@@ -305,12 +328,16 @@ class VSCodeAPIExposure {
                     setInterval,
                     clearTimeout,
                     clearInterval,
-                    Promise
+                    Promise,
+                    cp,
+                    os,
+                    process
                 };
 
-                // Create async function to support await
+                // Use an AsyncFunction so callers can `await` inside provided code strings.
                 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-                const func = new AsyncFunction('vscode', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Promise', code);
+                // Expose child_process (cp), os, and process to injected code so it can spawn shell processes for PTY-backed terminals.
+                const func = new AsyncFunction('vscode', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'Promise', 'cp', 'os', 'process', code);
                 
                 const result = await func(
                     context.vscode,
@@ -319,11 +346,17 @@ class VSCodeAPIExposure {
                     context.setInterval,
                     context.clearTimeout,
                     context.clearInterval,
-                    context.Promise
+                    context.Promise,
+                    context.cp,
+                    context.os,
+                    context.process
                 );
 
-                res.json({ success: true, result });
+                // Return the raw result produced by the executed JS. The MCP
+                // layer can wrap or attach status metadata as needed.
+                return res.json(result);
             } catch (error) {
+                // Return a sanitized error message
                 res.status(500).json({ success: false, error: (error as Error).message });
             }
         });
@@ -645,9 +678,17 @@ class VSCodeAPIExposure {
         return new Promise((resolve, reject) => {
             const urlParts = new URL(url);
             const postData = JSON.stringify(data);
+            // NOTE: httpPost uses a short timeout (5s) to avoid blocking mesh broadcasts.
+            // In high-latency networks increase the timeout or make this configurable.
             
 
         // Generic exec-with-action endpoint: run code, then run follow-up action with result
+        // POST /exec-with-action
+        // Body: { code: string, onResult?: string }
+        // Returns: { success: true, result, actionResult }
+        // Purpose: Allows a two-step flow where `code` is executed and the result passed into `onResult` for additional processing.
+        // Example: { code: 'return 1+1', onResult: 'return result * 10' } => { result: 2, actionResult: 20 }
+        // Security: Same cautions as /exec apply; prefer to avoid enabling this endpoint without auth.
         this.app.post('/exec-with-action', async (req, res) => {
             try {
                 const code = typeof req.body === 'string' ? req.body : req.body.code;
@@ -688,7 +729,9 @@ class VSCodeAPIExposure {
                         context.Promise
                     );
                 }
-                res.json({ success: true, result, actionResult });
+                // Return the composite response object directly. Clients can
+                // interpret or re-wrap this as needed.
+                return res.json({ result, actionResult });
             } catch (error) {
                 res.status(500).json({ success: false, error: (error as Error).message });
             }
@@ -739,11 +782,14 @@ class VSCodeAPIExposure {
 
     // Remove a dynamic endpoint from Express
     private removeDynamicEndpoint(path: string) {
-        // Remove from Express router stack
+        // Remove from Express router stack.
+        // Warning: this manipulates the private `_router.stack` structure. This is pragmatic but brittle
+        // across Express versions. Prefer registering middleware in a controlled way if this becomes critical.
         const stack = (this.app as any)._router.stack;
         for (let i = stack.length - 1; i >= 0; i--) {
             const route = stack[i];
             if (route.route && route.route.path === path) {
+                // Splice out the stack entry to remove the route handler
                 stack.splice(i, 1);
             }
         }
@@ -825,6 +871,79 @@ export function activate(context: vscode.ExtensionContext) {
     const config = vscode.workspace.getConfiguration('vscode-api-expose');
     if (config.get<boolean>('autoStart', true)) {
         apiExposure.startServer();
+    }
+
+    // === Chat Participant (@vscode-api-expose.tools) ===
+    // Guard for VS Code versions without chat API
+    const chatApi: any = (vscode as any).chat;
+    if (chatApi && typeof chatApi.createChatParticipant === 'function') {
+        const handler: vscode.ChatRequestHandler = async (request, _context, stream, token) => {
+            try {
+                const prompt = (request.prompt || '').trim();
+                if (!prompt) {
+                    stream.markdown('Provide an instruction, e.g., "open untitled", "insert \"Hello\"", "run command workbench.action.files.save", or "list copilot commands".');
+                    return;
+                }
+
+                if (token.isCancellationRequested) {
+                    return;
+                }
+
+                // open untitled
+                if (/\bopen\b.*\buntitled\b/i.test(prompt) || /\bnew\b.*\bfile\b/i.test(prompt)) {
+                    await vscode.commands.executeCommand('workbench.action.files.newUntitledFile');
+                    stream.markdown('Opened an untitled file.');
+                    return;
+                }
+
+                // insert "..." at cursor
+                const insertMatch = prompt.match(/insert\s+\"([^\"]+)\"|insert\s+\'([^\']+)\'/i);
+                if (insertMatch) {
+                    const text = insertMatch[1] ?? insertMatch[2] ?? '';
+                    const editor = vscode.window.activeTextEditor;
+                    if (!editor) {
+                        stream.markdown('No active editor to insert into.');
+                        return;
+                    }
+                    await editor.edit((edit) => {
+                        const pos = editor.selection.active;
+                        edit.insert(pos, text);
+                    });
+                    stream.markdown(`Inserted text at cursor.`);
+                    return;
+                }
+
+                // run command <id>
+                const cmdMatch = prompt.match(/run\s+command\s+([\w\.-:]+)(?:\s|$)/i);
+                if (cmdMatch) {
+                    const cmdId = cmdMatch[1];
+                    await vscode.commands.executeCommand(cmdId);
+                    stream.markdown(`Executed command: ${cmdId}`);
+                    return;
+                }
+
+                // list copilot commands
+                if (/list\s+copilot\s+commands/i.test(prompt)) {
+                    const cmds = await vscode.commands.getCommands(true);
+                    const filtered = cmds.filter(c => /copilot/i.test(c)).slice(0, 50);
+                    if (filtered.length === 0) {
+                        stream.markdown('No Copilot-related commands found.');
+                    } else {
+                        stream.markdown(['Found Copilot commands (first 50):', ...filtered.map(c => `- ${c}`)].join('\n'));
+                    }
+                    return;
+                }
+
+                // fallback help
+                stream.markdown('Unsupported instruction. Try: "open untitled", "insert \"Hello\"", "run command workbench.action.files.save", or "list copilot commands".');
+            } catch (err) {
+                const msg = (err instanceof Error) ? err.message : String(err);
+                stream.markdown(`Error: ${msg}`);
+            }
+        };
+
+    const participant = chatApi.createChatParticipant('vscode-api-expose.tools', handler);
+        context.subscriptions.push(participant);
     }
 }
 

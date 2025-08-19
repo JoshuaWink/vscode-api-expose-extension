@@ -211,16 +211,22 @@ program
 
 // Execute JavaScript code
 program
-    .command('exec <code>')
+    .command('exec [code...]')
     .description('Execute JavaScript code in VSCode context (JIT power!)')
-    .action(async (code: string) => {
+    .action(async (codeArgs: string[] = []) => {
         try {
+            const code = Array.isArray(codeArgs) ? codeArgs.join(' ') : (codeArgs as any || '');
+            if (!code || code.trim() === '') {
+                console.error(chalk.red('Error: no code provided to exec.')); 
+                process.exit(1);
+            }
+
             const opts = program.opts();
             const result = await client.executeJavaScript(code, {
                 sessionId: opts.session,
                 workspace: opts.workspace
             });
-            
+
             if (opts.json) {
                 console.log(JSON.stringify(result, null, 2));
             } else {

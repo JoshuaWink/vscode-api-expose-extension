@@ -1,7 +1,6 @@
 {
   "name": "vscode-api-cli",
-  "version": "1.0.1",
-  "description": "The One CLI to Rule Them All - Universal VSCode API access",
+  "version": "0.1.1",
   "main": "dist/cli.js",
   "bin": {
     "code-api": "./dist/cli.js",
@@ -25,5 +24,9 @@
   },
   "keywords": ["vscode", "api", "cli", "automation", "scripting"],
   "author": "VSCode API Exposure",
-  "license": "MIT"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshuaWink/vscode-api-expose-extension.git"
+  }
 }
