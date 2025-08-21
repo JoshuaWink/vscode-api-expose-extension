@@ -1,0 +1,40 @@
+{
+  "name": "vscode-api-expose-bridge",
+  "displayName": "VSCode API Expose Bridge",
+  "description": "Starts a UNIX socket inside the extension host to accept exec requests for integration testing.",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.80.0" },
+  "main": "./src/extension.js",
+  "scripts": {
+    "start": "node ./src/extension.js",
+    "build:vsix": "yes | npx --yes @vscode/vsce package",
+    "install:vsix": "npm run build:vsix && code --install-extension $(ls -1 *.vsix | tail -n1) --force",
+    "bump:vsix": "npm version minor --no-git-tag-version",
+    "bump-and-build:vsix": "npm run bump:vsix && npm run build:vsix",
+    "bump-and-install:vsix": "npm run bump:vsix && npm run install:vsix",
+    "watch:patch-bump": "chokidar 'src/**' 'package.json' -c \"npm version patch --no-git-tag-version\" --initial"
+  },
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0"
+  },
+  "extensionKind": ["workspace"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshuaWink/vscode-api-expose-extension"
+  },
+  "publisher": "local",
+  "categories": [ "Other" ],
+  "activationEvents": ["*"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-api-expose.startSocketBridge",
+        "title": "Start VSCode API Socket Bridge"
+      },
+      {
+        "command": "vscode-api-expose.stopSocketBridge",
+        "title": "Stop VSCode API Socket Bridge"
+      }
+    ]
+  }
+}

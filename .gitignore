@@ -9,3 +9,4 @@ dist/
 logs/
 *.vsix
 test-output.txt
+/contained-capi-mcp/
