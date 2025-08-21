@@ -349,7 +349,7 @@ class VSCodeAPIExposure {
                     context.Promise,
                     context.cp,
                     context.os,
-                    context.process
+                    context.process,
                 );
 
                 // Return the raw result produced by the executed JS. The MCP
@@ -410,6 +410,7 @@ class VSCodeAPIExposure {
                 }
                 
                 res.json({ success: true, result });
+
             } catch (error) {
                 res.status(500).json({ success: false, error: (error as Error).message });
             }
@@ -785,15 +786,31 @@ class VSCodeAPIExposure {
         // Remove from Express router stack.
         // Warning: this manipulates the private `_router.stack` structure. This is pragmatic but brittle
         // across Express versions. Prefer registering middleware in a controlled way if this becomes critical.
-        const stack = (this.app as any)._router.stack;
-        for (let i = stack.length - 1; i >= 0; i--) {
-            const route = stack[i];
-            if (route.route && route.route.path === path) {
-                // Splice out the stack entry to remove the route handler
-                stack.splice(i, 1);
+        try {
+            const router = (this.app as any)._router;
+            if (!router || !Array.isArray(router.stack)) {
+                // Router not initialized (can happen in some runtime states). Ensure we don't throw.
+                console.warn(`Cannot remove dynamic endpoint ${path}: router stack not available.`);
+                // Keep internal map consistent
+                this.dynamicEndpoints.delete(path);
+                return;
             }
+
+            const stack = router.stack;
+            for (let i = stack.length - 1; i >= 0; i--) {
+                const route = stack[i];
+                if (route && route.route && route.route.path === path) {
+                    // Splice out the stack entry to remove the route handler
+                    stack.splice(i, 1);
+                }
+            }
+        } catch (err) {
+            // Defensive: log and continue. We must not crash the extension host due to route removal.
+            console.error(`Failed to remove dynamic endpoint ${path}:`, err);
+        } finally {
+            // Always remove from our internal registry so state stays consistent even if Express internals differ.
+            this.dynamicEndpoints.delete(path);
         }
-        this.dynamicEndpoints.delete(path);
     }
 }
 
