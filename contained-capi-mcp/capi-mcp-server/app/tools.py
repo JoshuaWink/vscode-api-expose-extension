@@ -10,13 +10,11 @@ import uuid
 import sys
 import json
 import re
-from .vscode_api_client import VSCodeAPIClient
 import socket
 import uuid
 import os
 
-# Instantiate shared HTTP-based client for VSCode API Exposure
-vscode_client = VSCodeAPIClient()
+# Note: prefer in-extension bridge for all VSCode operations. HTTP client removed.
 
 # Local PTY manager: allow MCP server to spawn and manage real shell PTYs locally.
 _local_ptys = {}
@@ -112,28 +110,17 @@ def register_tools(server):
                 cwd = payload.get("cwd", cwd)
             if not code:
                 return "Error: No code provided."
-            # Prefer the in-extension unix socket bridge when available; fall back to HTTP client.
-            try:
-                # If caller provided an explicit socket_path, or there's a workspace socket, use bridge
-                socket_path = None
-                if payload and isinstance(payload, dict):
-                    socket_path = payload.get('socket_path') or payload.get('socketPath')
-                discovered = _discover_bridge_socket(socket_path)
-                if discovered:
-                    socket_path = discovered
-                    bridge_result = _bridge_exec(code, payload=payload or {}, socket_path=socket_path)
-                    if bridge_result is not None:
-                        return bridge_result
-
-                # Use HTTP client to execute JS in VSCode context as a fallback
-                response = vscode_client.execute_javascript(
-                    code,
-                    session_id=payload.get('sessionId', None) if payload else None,
-                    workspace=payload.get('workspace', None) if payload else None
-                )
-                return json.dumps(response)
-            except Exception as err:
-                return f"Error: {err}"
+            # Prefer the in-extension unix socket bridge; no HTTP fallback.
+            socket_path = None
+            if payload and isinstance(payload, dict):
+                socket_path = payload.get('socket_path') or payload.get('socketPath')
+            discovered = _discover_bridge_socket(socket_path)
+            if not discovered:
+                return json.dumps({ 'ok': False, 'error': 'bridge-socket-not-found', 'attempted': socket_path })
+            bridge_result = _bridge_exec(code, payload=payload or {}, socket_path=discovered)
+            if bridge_result is not None:
+                return bridge_result
+            return json.dumps({ 'ok': False, 'error': 'bridge-exec-failed' })
         except Exception as e:
             print(f"[code_execute tool error] {e}", file=sys.stderr)
             return f"Error: {e}"
@@ -159,41 +146,30 @@ def register_tools(server):
                 cwd = payload.get("cwd", cwd)
             if not command:
                 command = "--help"
-            # Prefer bridge when available, otherwise use the HTTP client to execute VS Code commands
+            # Bridge-only command execution
+            socket_path = None
+            if payload and isinstance(payload, dict):
+                socket_path = payload.get('socket_path') or payload.get('socketPath')
+            discovered = _discover_bridge_socket(socket_path)
+            if not discovered:
+                return json.dumps({ 'ok': False, 'error': 'bridge-socket-not-found', 'attempted': socket_path })
+            # Build JS that calls vscode.commands.executeCommand and let _bridge_exec wrap it
+            js_args = []
+            if args is None:
+                js_args = []
+            elif isinstance(args, str):
+                js_args = [args]
+            else:
+                js_args = list(args)
             try:
-                socket_path = None
-                if payload and isinstance(payload, dict):
-                    socket_path = payload.get('socket_path') or payload.get('socketPath')
-                discovered = _discover_bridge_socket(socket_path)
-                if discovered:
-                    socket_path = discovered
-                    # Build JS that calls vscode.commands.executeCommand and let _bridge_exec wrap it
-                    js_args = []
-                    if args is None:
-                        js_args = []
-                    elif isinstance(args, str):
-                        js_args = [args]
-                    else:
-                        js_args = list(args)
-                    try:
-                        js_args_json = json.dumps(js_args)
-                    except Exception:
-                        js_args_json = json.dumps([str(a) for a in js_args])
-                    call_code = f"return await vscode.commands.executeCommand({json.dumps(command)}, ...{js_args_json});"
-                    bridge_result = _bridge_exec(call_code, payload=payload or {}, socket_path=socket_path)
-                    if bridge_result is not None:
-                        return bridge_result
-
-                # Fallback to HTTP client
-                response = vscode_client.execute_command(
-                    command,
-                    args=list(shlex.split(args)) if isinstance(args, str) else args,
-                    session_id=payload.get('sessionId', None) if payload else None,
-                    workspace=payload.get('workspace', None) if payload else None
-                )
-                return json.dumps(response)
-            except Exception as err:
-                return f"Error: {err}"
+                js_args_json = json.dumps(js_args)
+            except Exception:
+                js_args_json = json.dumps([str(a) for a in js_args])
+            call_code = f"return await vscode.commands.executeCommand({json.dumps(command)}, ...{js_args_json});"
+            bridge_result = _bridge_exec(call_code, payload=payload or {}, socket_path=discovered)
+            if bridge_result is not None:
+                return bridge_result
+            return json.dumps({ 'ok': False, 'error': 'bridge-exec-failed' })
         except Exception as e:
             print(f"[code tool error] {e}", file=sys.stderr)
             return f"Error: {e}"
@@ -206,14 +182,16 @@ def register_tools(server):
         Accepts an optional `payload` dict with `sessionId` and `workspace`.
         """
         try:
-            try:
-                response = vscode_client.get_apis(
-                    session_id=payload.get('sessionId') if payload else None,
-                    workspace=payload.get('workspace') if payload else None
-                )
-                return json.dumps(response)
-            except Exception as err:
-                return f"Error: {err}"
+            # Bridge-only: request commands via bridge
+            socket_path = payload.get('socket_path') if payload and isinstance(payload, dict) else None
+            discovered = _discover_bridge_socket(socket_path)
+            if not discovered:
+                return json.dumps({ 'ok': False, 'error': 'bridge-socket-not-found', 'attempted': socket_path })
+            code = "return await vscode.commands.getCommands(true);"
+            bridge_result = _bridge_exec(code, payload=payload or {}, socket_path=discovered)
+            if bridge_result is not None:
+                return bridge_result
+            return json.dumps({ 'ok': False, 'error': 'bridge-exec-failed' })
         except Exception as e:
             print(f"[vscode_execute_help tool error] {e}", file=sys.stderr)
             return f"Error: {e}"
